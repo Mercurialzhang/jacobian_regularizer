@@ -32,7 +32,7 @@ class JacobianReg(nn.Module):
         self.n = n
         super(JacobianReg, self).__init__()
 
-    def forward(self, x, y):
+    def forward(self, x, y, return_grad=False):
         '''
         computes (1/2) tr |dy/dx|^2
         '''
@@ -42,6 +42,10 @@ class JacobianReg(nn.Module):
         else:
             num_proj = self.n
         J2 = 0
+
+        # accumulate grads
+        grads_ = []
+
         for ii in range(num_proj):
             if self.n == -1:
                 # orthonormal vector, sequentially spanned
@@ -53,8 +57,16 @@ class JacobianReg(nn.Module):
             if x.is_cuda:
                 v = v.cuda()
             Jv = self._jacobian_vector_product(y, x, v, create_graph=True)
+
+            if return_grad:
+                grads_.append(Jv)
+
             J2 += C*torch.norm(Jv)**2 / (num_proj*B)
         R = (1/2)*J2
+
+        if return_grad:
+            return grads_
+
         return R
 
     def _random_vector(self, C, B):
